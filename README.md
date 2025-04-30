@@ -13,4 +13,5 @@ This project is a web-based application that designed to streamline operations a
 - Admins can manage users, assign doctors to patients, and schedule procedures,
 - Doctors can view schedules, update procedure statuses, and maintain patient notes,
 - Patients can log in after getting the credentials from the admin to view their appointments and reports securely.
-</p>
+
+
