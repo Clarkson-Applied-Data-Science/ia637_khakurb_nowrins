@@ -59,21 +59,21 @@ def login():
             return redirect('main')
         else:
             print("Login Failed")
-            return render_template('home.html', title='Home', msg='Incorrect username or password.') #made changes
+            return render_template('home.html', title='Home', msg='Incorrect username or password.', home =True) #made changes
     else:   
         if 'msg' not in session.keys() or session['msg'] is None:
             m = 'Type your email and password to continue.'
         else:
             m = session['msg']
             session['msg'] = None
-        return render_template('home.html', title='Login', msg=m)    
+        return render_template('home.html', title='Login', msg=m, home = True)    
 
 @app.route('/logout',methods = ['GET','POST'])
 def logout():
     if session.get('user') is not None:
         del session['user']
         del session['active']
-    return render_template('home.html', title='Login', msg='You have logged out.')
+    return render_template('home.html', title='Login', msg='You have logged out.', home = True)
 
 
 
@@ -294,87 +294,6 @@ def schedules_manage():
 
     return render_template("schedules/manage.html", obj=o, me=me, doctors=doctors, patients=patients)
 
-# List Schedules (Calendar View)
-# @app.route("/schedules/list")
-# def schedules_list():
-#     o = schedule()
-#     me = session['user']
-
-#     # Get requested month and year from query params
-#     month = request.args.get('month', type=int)
-#     year = request.args.get('year', type=int)
-
-#     today = datetime.today()
-
-#     # If month/year not provided, use current
-#     if not month or not year:
-#         month = today.month
-#         year = today.year
-
-#     # First day of the month
-#     first_day = datetime(year, month, 1)
-
-#     # Days in month
-#     if month == 12:
-#         next_month = datetime(year + 1, 1, 1)
-#     else:
-#         next_month = datetime(year, month + 1, 1)
-#     days_in_month = (next_month - timedelta(days=1)).day
-
-#     # Adjust so Sunday = 0
-#     first_weekday = (first_day.weekday() + 1) % 7
-
-#     # Load schedules based on user role
-#     if me['UserRole'] == 'admin':
-#         o.getAll()
-#     elif me['UserRole'] == 'patient':
-#         o.getByField('PatientID', me['UserID'])  
-#     elif me['UserRole'] == 'doctor':
-#         o.getByField('DoctorID', me['UserID'])
-  
-#     # Map users for patient names
-#     u = user()
-#     u.getAll()
-#     users_by_id = {row['UserID']: row['Full_name'] for row in u.data}
-
-#     for row in o.data:
-#         if isinstance(row['Start'], str):
-#             row['Start'] = datetime.strptime(row['Start'], '%Y-%m-%d %H:%M:%S')
-        
-#         row['patient_name'] = users_by_id.get(row['PatientID'], 'Unknown')
-#         print("Row SID:", row['SID'], "Start =", row['Start'], "Type =", type(row['Start']))
-
-#     # Build calendar weeks
-#     weeks = []
-#     week = []
-
-#     # Fill empty cells before the first of month
-#     for _ in range(first_day.weekday()):
-#         week.append(None)
-
-#     for day in range(1, days_in_month + 1):
-#         current_date = date(year, month, day)
-#         week.append(current_date)
-#         if len(week) == 7:
-#             weeks.append(week)
-#             week = []
-
-#     if week:
-#         while len(week) < 7:
-#             week.append(None)
-#         weeks.append(week)
-
-#     return render_template(
-#         "schedules/list.html",
-#         objs=o,
-#         now=today,
-#         month=month,
-#         year=year,
-#         weeks=weeks,
-#         first_weekday=first_weekday,
-#         days_in_month=days_in_month,
-#         me=me
-#     )
 @app.route("/schedules/list")
 def schedules_list():
     o = schedule()
