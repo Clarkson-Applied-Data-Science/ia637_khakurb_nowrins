@@ -28,7 +28,7 @@ class procedure_status(baseObject):
         self.data = self.cur.fetchall()
 
     def getAllProcedures(self):
-        sql = "SELECT P_id, PName FROM Procedures"
+        sql = "SELECT P_id, PName FROM Procedures WHERE Status = 'Active'"
         self.cur.execute(sql)
         return self.cur.fetchall()
 
