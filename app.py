@@ -295,6 +295,86 @@ def schedules_manage():
     return render_template("schedules/manage.html", obj=o, me=me, doctors=doctors, patients=patients)
 
 # List Schedules (Calendar View)
+# @app.route("/schedules/list")
+# def schedules_list():
+#     o = schedule()
+#     me = session['user']
+
+#     # Get requested month and year from query params
+#     month = request.args.get('month', type=int)
+#     year = request.args.get('year', type=int)
+
+#     today = datetime.today()
+
+#     # If month/year not provided, use current
+#     if not month or not year:
+#         month = today.month
+#         year = today.year
+
+#     # First day of the month
+#     first_day = datetime(year, month, 1)
+
+#     # Days in month
+#     if month == 12:
+#         next_month = datetime(year + 1, 1, 1)
+#     else:
+#         next_month = datetime(year, month + 1, 1)
+#     days_in_month = (next_month - timedelta(days=1)).day
+
+#     # Adjust so Sunday = 0
+#     first_weekday = (first_day.weekday() + 1) % 7
+
+#     # Load schedules based on user role
+#     if me['UserRole'] == 'admin':
+#         o.getAll()
+#     elif me['UserRole'] == 'patient':
+#         o.getByField('PatientID', me['UserID'])  
+#     elif me['UserRole'] == 'doctor':
+#         o.getByField('DoctorID', me['UserID'])
+  
+#     # Map users for patient names
+#     u = user()
+#     u.getAll()
+#     users_by_id = {row['UserID']: row['Full_name'] for row in u.data}
+
+#     for row in o.data:
+#         if isinstance(row['Start'], str):
+#             row['Start'] = datetime.strptime(row['Start'], '%Y-%m-%d %H:%M:%S')
+        
+#         row['patient_name'] = users_by_id.get(row['PatientID'], 'Unknown')
+#         print("Row SID:", row['SID'], "Start =", row['Start'], "Type =", type(row['Start']))
+
+#     # Build calendar weeks
+#     weeks = []
+#     week = []
+
+#     # Fill empty cells before the first of month
+#     for _ in range(first_day.weekday()):
+#         week.append(None)
+
+#     for day in range(1, days_in_month + 1):
+#         current_date = date(year, month, day)
+#         week.append(current_date)
+#         if len(week) == 7:
+#             weeks.append(week)
+#             week = []
+
+#     if week:
+#         while len(week) < 7:
+#             week.append(None)
+#         weeks.append(week)
+
+#     return render_template(
+#         "schedules/list.html",
+#         objs=o,
+#         now=today,
+#         month=month,
+#         year=year,
+#         weeks=weeks,
+#         first_weekday=first_weekday,
+#         days_in_month=days_in_month,
+#         me=me
+#     )
 @app.route("/schedules/list")
 def schedules_list():
     o = schedule()
@@ -325,12 +405,18 @@ def schedules_list():
     first_weekday = (first_day.weekday() + 1) % 7
 
     # Load schedules based on user role
-    if me['UserRole'] == 'admin':
+    if me['UserRole'].lower() == 'admin':
         o.getAll()
-    elif me['UserRole'] == 'patient':
-        o.getByField('PatientID', me['UserID'])
-    elif me['UserRole'] == 'doctor':
-        o.getByField('DoctorID', me['UserID'])
+    elif me['UserRole'].lower() == 'patient':
+        sql = "SELECT * FROM Schedules WHERE PatientID = %s"
+        o.cur.execute(sql, (me['UserID'],))
+        o.data = o.cur.fetchall()
+        print("👤 Patient sees #schedules:", len(o.data))
+    elif me['UserRole'].lower() == 'doctor':
+        sql = "SELECT * FROM Schedules WHERE DoctorID = %s"
+        o.cur.execute(sql, (me['UserID'],))
+        o.data = o.cur.fetchall()
+        print(" Doctor sees #schedules:", len(o.data))
 
     # Map users for patient names
     u = user()
@@ -338,10 +424,17 @@ def schedules_list():
     users_by_id = {row['UserID']: row['Full_name'] for row in u.data}
 
     for row in o.data:
+        # Convert Start field to datetime if needed
         if isinstance(row['Start'], str):
-            row['Start'] = datetime.strptime(row['Start'], '%Y-%m-%d %H:%M:%S')
-        
+            try:
+                row['Start'] = datetime.strptime(row['Start'], '%Y-%m-%d %H:%M:%S')
+            except Exception as e:
+                print(f"Failed to convert Start for SID {row['SID']}: {row['Start']} — {e}")
+
         row['patient_name'] = users_by_id.get(row['PatientID'], 'Unknown')
+
+        # Optional debug
+        print("Row SID:", row['SID'], "Start =", row['Start'], "Type =", type(row['Start']))
 
     # Build calendar weeks
     weeks = []
@@ -374,7 +467,6 @@ def schedules_list():
         days_in_month=days_in_month,
         me=me
     )
-
 @app.route("/schedules/delete")
 def schedules_delete():
     me = session['user']
@@ -391,8 +483,6 @@ def schedules_delete():
 
 ################################Procedure Status #######################################
 
-from procedure_status import procedure_status
-
 @app.route('/procedure_status/manage', methods=['GET', 'POST'])
 def manage_procedure_status():
     if 'user' not in session or session['user']['UserRole'] not in ['admin', 'doctor']:
@@ -403,7 +493,8 @@ def manage_procedure_status():
     hide_completed = user_role == 'doctor'
 
     # Load only open/booked schedules for doctors
-    schedule_list = ps.getScheduleList(hide_completed_for_doctors=hide_completed)
+    doctor_id = session['user']['UserID'] if user_role == 'doctor' else None
+    schedule_list = ps.getScheduleList(hide_completed_for_doctors=hide_completed, doctor_id=doctor_id)
 
     # If no schedules available (all completed), show message
     if not schedule_list and user_role == 'doctor':
@@ -521,80 +612,6 @@ def view_reports():
 
 
 ################################Patient Dashboard ######################################
-# @app.route('/patient_main')
-# def patient_main():
-#     if 'user' not in session:
-#         return redirect('/login')
-
-#     user = session['user']
-#     patient_id = user['UserID']
-
-#     db = Reports()
-#     db.setup()
-#     cursor = db.cur
-
-#     # 1. Upcoming Appointments
-#     cursor.execute("""
-#         SELECT COUNT(*) AS UpcomingCount
-#         FROM Schedules
-#         WHERE PatientID = %s
-#           AND Start > NOW()
-#           AND Status IN ('Booked', 'Open');
-#     """, (patient_id,))
-#     upcoming = cursor.fetchone()
-#     upcoming = upcoming['UpcomingCount'] if upcoming else 0
-
-
-#     # 2. Completed Visits
-#     cursor.execute("""
-#         SELECT COUNT(DISTINCT s.SID) AS CompletedVisits
-#         FROM Schedules s
-#         JOIN Procedure_Status ps ON s.SID = ps.SID
-#         WHERE s.PatientID = %s
-#           AND ps.Completed = 'Completed';
-#     """, (patient_id,))
-#     completed = cursor.fetchone()
-#     completed = completed['CompletedVisits'] if completed else 0
-
-
-#     # 3. Reports Available
-#     cursor.execute("""
-#         SELECT COUNT(DISTINCT s.SID) AS ReportsAvailable
-#         FROM Schedules s
-#         JOIN Procedure_Status ps ON s.SID = ps.SID
-#         WHERE s.PatientID = %s
-#           AND ps.Completed = 'Completed';
-#     """, (patient_id,))
-#     reports = cursor.fetchone()
-#     reports = reports['ReportsAvailable'] if reports else 0
-
-#     # 4. Last Procedures
-#     cursor.execute("""
-#         SELECT 
-#             p.PName AS PName,
-#             d.Full_name AS DoctorName,
-#             s.Start AS Date
-#         FROM 
-#             Schedules s
-#         JOIN Procedure_Status ps ON s.SID = ps.SID
-#         JOIN Procedures p ON ps.P_id = p.P_id
-#         JOIN Users d ON s.DoctorID = d.UserID
-#         WHERE 
-#             s.PatientID = %s
-#             AND ps.Completed = 'Completed'
-#         ORDER BY s.Start DESC
-#         LIMIT 5;
-#     """, (patient_id,))
-#     last_procedures = cursor.fetchall()
-
-#     db.conn.close()
-
-#     return render_template('patient_main.html', 
-#                        me=user,
-#                        upcoming_appointments=upcoming,
-#                        completed_visits=completed,
-#                        available_reports=reports,
-#                        last_procedures=last_procedures)
 
 @app.route('/patient_main')
 def patient_main():
