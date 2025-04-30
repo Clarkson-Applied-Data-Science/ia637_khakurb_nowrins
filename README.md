@@ -106,8 +106,6 @@ This project is a web-based application that designed to streamline operations a
 - One Doctor can have multiple assigned procedures
 - One Patient can have multiple appointments
 - One Schedule ties together a patient, doctor, and procedure
-<img src="" width="500">
-
 <p align="left">
   <img src="images/Relational schema.jpeg" width="500">
 </p>
