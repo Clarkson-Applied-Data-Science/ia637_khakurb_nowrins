@@ -176,9 +176,9 @@ basic Python and MySQL environment setup/Visual Studio code
 
 ## **🏃Running the Application**
 **1.Clone the repository:**
-<pre><code>git clone https://github.com/username/hospital-management.git 
+<pre><code>git clone https://github.com/Clarkson-Applied-Data-Science/ia637_khakurb_nowrins.git
 
-cd hospital-management </code></pre>
+cd ia637_khakurb_nowrins </code></pre>
 
 **2.Start the development server:**
     python app.py
